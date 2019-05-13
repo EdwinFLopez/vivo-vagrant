@@ -4,22 +4,6 @@
 # Install VIVO.
 #
 
-# Exit on first error
-set -e
-
-# Print shell commands
-set -o verbose
-
-# Make data directory
-mkdir -p /opt/vivo
-# Make config directory
-mkdir -p /opt/vivo/config
-# Make log directory
-mkdir -p /opt/vivo/logs
-
-# Make src directory
-mkdir -p /home/vagrant/src
-
 removeRDFFiles(){
     # In development, you might want to remove these ontology and data files
     # since they slow down Tomcat restarts considerably.
@@ -71,11 +55,13 @@ installVIVO() {
 
   # Vivo
   cd /home/vagrant/src
+  rm -rf Vitro || true
+  rm -rf VIVO || true
   git clone https://github.com/vivo-project/Vitro.git Vitro -b vitro-1.10.0 || true
   git clone https://github.com/vivo-project/VIVO.git VIVO -b vivo-1.10.0 || true
 
   cd VIVO
-  mvn clean install -DskipTests -s /home/vagrant/provision/vivo/settings.xml
+  mvn clean install -Dmaven.test.skip=true -q -U -s /home/vagrant/provision/vivo/settings.xml
 
   cp /home/vagrant/provision/vivo/runtime.properties /opt/vivo/config/runtime.properties
   cp /home/vagrant/provision/vivo/developer.properties /opt/vivo/config/developer.properties
@@ -86,8 +72,24 @@ installVIVO() {
   chown -R tomcat /opt/vivo
 }
 
+# Exit on first error
+set -e
+
+# Print shell commands
+set -o verbose
+
+# Make data directory
+mkdir -p /opt/vivo
+# Make config directory
+mkdir -p /opt/vivo/config
+# Make log directory
+mkdir -p /opt/vivo/logs
+
+# Make src directory
+mkdir -p /home/vagrant/src
+
 # Stop tomcat
-systemctl stop tomcat
+systemctl stop tomcat9
 
 # add vagrant to tomcat group
 if ! id "vagrant" >/dev/null 2>&1; then
@@ -109,9 +111,8 @@ setupTomcat
 setLogAlias
 
 # Stop tomcat
-systemctl start tomcat
+systemctl start tomcat9
 
 echo VIVO installed.
 
 exit
-

@@ -21,7 +21,7 @@ then
   echo Installing Karma to $KARMA_HOME
 
   #install maven
-  apt-get install maven
+  apt-get install -y maven
 
   PWD=`pwd`
   TMPFILE=`tempfile`
@@ -38,7 +38,7 @@ then
   rm -r $KARMA_NAME
 
   #Run maven install
-  mvn clean install
+  mvn clean install -q -U -Dmaven.test.skip=true
   cd $PWD
 
   #change owner of karma directory to vagrant

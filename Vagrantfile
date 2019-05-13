@@ -13,12 +13,12 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
-  config.vm.box = "hashicorp-vagrant/ubuntu-16.04"
+  config.vm.box = "ubuntu/disco64"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
   # `vagrant box outdated`. This is not recommended.
-  # config.vm.box_check_update = false
+  config.vm.box_check_update = true
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
@@ -58,7 +58,7 @@ Vagrant.configure("2") do |config|
     # Display the VirtualBox GUI when booting the machine
     vb.gui = false
     # Customize number of CPUs on the VM:
-    vb.cpus = 1
+    vb.cpus = 2
     # Customize the amount of memory on the VM:
     vb.memory = "4096"
   end

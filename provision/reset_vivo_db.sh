@@ -3,7 +3,7 @@ set -e
 
 cd
 
-systemctl stop tomcat
+systemctl stop tomcat9
 
 VIVO_DATABASE=vivo110dev
 # save the database schema (without data)
@@ -17,4 +17,4 @@ mysql --user=root --password=vivo  $VIVO_DATABASE < "${VIVO_DATABASE}_schema.sql
 
 rm -rf /opt/vivo/solr/data
 
-systemctl start tomcat
+systemctl start tomcat9
