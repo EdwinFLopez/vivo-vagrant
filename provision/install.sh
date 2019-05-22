@@ -1,22 +1,37 @@
 #!/bin/bash
 
 #
-# Install VIVO.
+# Set global variables
 #
+CATALINA_BASE="/var/lib/tomcat9"
+CATALINA_WEBAPPS="$CATALINA_BASE/webapps/"
+TOMCAT_CONFIG="/etc/tomcat9"
+CATALINA_CONFIG="$TOMCAT_CONFIG/Catalina/localhost"
+DUMMY_TOMCAT_HOME="/opt/tomcat"
+VIVO_HOME="/opt/vivo"
+VIVO_REPO_URL="https://github.com/vivo-project"
+PROVISION_HOME="/home/vagrant/provision"
+SOURCE_HOME="/home/vagrant/src"
 
+#
+# Clean ontology data files
+#
 removeRDFFiles(){
     # In development, you might want to remove these ontology and data files
     # since they slow down Tomcat restarts considerably.
-    rm /opt/vivo/rdf/tbox/filegraph/geo-political.owl
-    rm /opt/vivo/rdf/abox/filegraph/continents.n3
-    rm /opt/vivo/rdf/abox/filegraph/us-states.rdf
-    rm /opt/vivo/rdf/abox/filegraph/geopolitical.abox.ver1.1-11-18-11.owl
+    rm $VIVO_HOME/rdf/tbox/filegraph/geo-political.owl
+    rm $VIVO_HOME/rdf/abox/filegraph/continents.n3
+    rm $VIVO_HOME/rdf/abox/filegraph/us-states.rdf
+    rm $VIVO_HOME/rdf/abox/filegraph/geopolitical.abox.ver1.1-11-18-11.owl
     return $TRUE
 }
 
+#
+# Set alias for logs
+#
 setLogAlias() {
     # Alias for viewing VIVO log
-    VLOG="alias vlog='less +F /opt/tomcat/logs/vivo.all.log'"
+    VLOG="alias vlog='less +F /var/log/tomcat9/vivo.all.log'"
     BASHRC=/home/vagrant/.bashrc
 
     if grep "$VLOG" $BASHRC > /dev/null
@@ -28,48 +43,119 @@ setLogAlias() {
     fi
 }
 
-setupTomcat() {
-    cd
-    # Change permissions
-    dirs=( /opt/vivo /opt/tomcat/webapps/vivo )
-    for dir in "${dirs[@]}"
-    do
-      chown -R vagrant:tomcat $dir
-      chmod -R g+rws $dir
-    done
+#
+# Configure Tomcat Service with updated configuration files
+#
+updateTomcatConfiguration() {
+  PROVISION_T9_SERVICE="$PROVISION_HOME/tomcat/tomcat.service"
+  ORIGIN_T9_SERVICE="/lib/systemd/system/tomcat9.service"
+  TARGET_T9_SERVICE="/etc/systemd/system/multi-user.target.wants/tomcat9.service"
 
-    # Add redirect to /vivo in tomcat root
-    rm -f /opt/tomcat/webapps/ROOT/index.html
-    cp /home/vagrant/provision/vivo/index.jsp /opt/tomcat/webapps/ROOT/index.jsp
+  # Stop tomcat
+  systemctl stop tomcat9.service
+
+  # add vagrant to tomcat group
+  if ! id "vagrant" >/dev/null 2>&1; then
+    echo "Creating 'vagrant' user"
+    adduser --disabled-password --gecos "" vagrant || true
+  fi
+  usermod -a -G tomcat vagrant || true
+
+  # Change permissions in vivo folders
+  dirs=( $VIVO_HOME $DUMMY_TOMCAT_HOME $CATALINA_WEBAPPS/vivo $CATALINA_WEBAPPS/vivosolr )
+  for dir in "${dirs[@]}"
+  do
+    chown -R vagrant:tomcat $dir
+    chmod -R g+rws $dir
+  done
+
+  # Add redirect to /vivo in tomcat root
+  rm -f $CATALINA_WEBAPPS/ROOT/index.html || true
+  cp $PROVISION_HOME/vivo/index.jsp $CATALINA_WEBAPPS/ROOT/index.jsp
+
+  # Add vivo users to tomcat-users.xml
+  rm -f $TOMCAT_CONFIG/tomcat-users.xml || true
+  cp $PROVISION_HOME/tomcat/tomcat-users.xml $TOMCAT_CONFIG/tomcat-users.xml
+
+  # Add vivo context to tomcat
+  cp $PROVISION_HOME/tomcat/vivo.xml $CATALINA_CONFIG/vivo.xml
+  cp $PROVISION_HOME/tomcat/vivosolr.xml $CATALINA_CONFIG/vivosolr.xml
+
+  # Assign contexts to tomcat group
+  chgrp tomcat $TOMCAT_CONFIG/tomcat-users.xml
+  chgrp tomcat $CATALINA_CONFIG/vivo.xml
+  chgrp tomcat $CATALINA_CONFIG/vivosolr.xml
+
+  # Update tomcat service configuration 
+  rm -r $ORIGIN_T9_SERVICE || true
+  rm -r $TARGET_T9_SERVICE || true
+
+  # Update Tomcat service configuration file
+  cp $PROVISION_T9_SERVICE $ORIGIN_T9_SERVICE
+  ln -sF $ORIGIN_T9_SERVICE $TARGET_T9_SERVICE  
+
+  # Update configuration and start tomcat
+  systemctl daemon-reload
+  systemctl start tomcat9.service || true
 }
 
+#
+# Install VIVO Database.
+#
 setupMySQL() {
   mysql --user=root --password=vivo -e "CREATE DATABASE vivo110dev CHARACTER SET utf8;" || true
   mysql --user=root --password=vivo -e "GRANT ALL ON vivo110dev.* TO 'vivo'@'localhost' IDENTIFIED BY 'vivo';"
 }
 
+#
+# Install VIVO.
+#
 installVIVO() {
-
+  # Increase the number of threads for tomcat and apache services.
   echo 'apache           hard    nproc           400' >> /etc/security/limits.conf
   echo 'tomcat           hard    nproc           1500' >> /etc/security/limits.conf
 
+  # Make data directory
+  mkdir -p $VIVO_HOME
+
+  # Make config directory
+  mkdir -p $VIVO_HOME/config
+
+  # Make log directory
+  mkdir -p $VIVO_HOME/logs
+
+  # Make src directory
+  mkdir -p $SOURCE_HOME
+
+  # Make dummy tomcat folder to comply with build script and link it 
+  # to current webapps folder so deployment can happen
+  mkdir $DUMMY_TOMCAT_HOME
+  ln -sF $DUMMY_TOMCAT_HOME/webapps $CATALINA_WEBAPPS
+
   # Vivo
-  cd /home/vagrant/src
+  cd $SOURCE_HOME
+
+  # Remove current source code in case they exist
   rm -rf Vitro || true
   rm -rf VIVO || true
-  git clone https://github.com/vivo-project/Vitro.git Vitro -b vitro-1.10.0 || true
-  git clone https://github.com/vivo-project/VIVO.git VIVO -b vivo-1.10.0 || true
 
+  # Download vivo and vitro
+  git clone $VIVO_REPO_URL/Vitro.git Vitro -b vitro-1.10.0 || true
+  git clone $VIVO_REPO_URL/VIVO.git VIVO -b vivo-1.10.0 || true
+
+  # Build from source code and install vivo
   cd VIVO
-  mvn clean install -Dmaven.test.skip=true -q -U -s /home/vagrant/provision/vivo/settings.xml
+  mvn clean install -s $PROVISION_HOME/vivo/settings.xml -Dmaven.test.skip=true -q -U 
 
-  cp /home/vagrant/provision/vivo/runtime.properties /opt/vivo/config/runtime.properties
-  cp /home/vagrant/provision/vivo/developer.properties /opt/vivo/config/developer.properties
-  cp /home/vagrant/provision/vivo/build.properties /opt/vivo/config/build.properties
-  cp /home/vagrant/provision/vivo/applicationSetup.n3 /opt/vivo/config/applicationSetup.n3
+  # Copy configuration files
+  cp $PROVISION_HOME/vivo/runtime.properties $VIVO_HOME/config/runtime.properties
+  cp $PROVISION_HOME/vivo/developer.properties $VIVO_HOME/config/developer.properties
+  cp $PROVISION_HOME/vivo/build.properties $VIVO_HOME/config/build.properties
+  cp $PROVISION_HOME/vivo/applicationSetup.n3 $VIVO_HOME/config/applicationSetup.n3
 
-  chgrp -R tomcat /opt/vivo
-  chown -R tomcat /opt/vivo
+  # Update permissions
+  chmod -R 775 $DUMMY_TOMCAT_HOME
+  chmod -R 775 $VIVO_HOME
 }
 
 # Exit on first error
@@ -78,26 +164,6 @@ set -e
 # Print shell commands
 set -o verbose
 
-# Make data directory
-mkdir -p /opt/vivo
-# Make config directory
-mkdir -p /opt/vivo/config
-# Make log directory
-mkdir -p /opt/vivo/logs
-
-# Make src directory
-mkdir -p /home/vagrant/src
-
-# Stop tomcat
-systemctl stop tomcat9
-
-# add vagrant to tomcat group
-if ! id "vagrant" >/dev/null 2>&1; then
-  echo "Creating 'vagrant' user"
-  adduser --disabled-password --gecos "" vagrant || true
-fi
-usermod -a -G tomcat vagrant || true
-
 # create VIVO database
 setupMySQL
 
@@ -105,13 +171,10 @@ setupMySQL
 installVIVO
 
 # Adjust tomcat permissions
-setupTomcat
+updateTomcatConfiguration
 
 # Set a log alias
 setLogAlias
-
-# Stop tomcat
-systemctl start tomcat9
 
 echo VIVO installed.
 

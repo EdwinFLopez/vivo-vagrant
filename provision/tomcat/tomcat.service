@@ -1,25 +1,47 @@
+#
+# Systemd unit file for Apache Tomcat
+#
+
 [Unit]
-Description=Apache Tomcat Web Application Container
+Description=Apache Tomcat 9 Web Application Server
+Documentation=https://tomcat.apache.org/tomcat-9.0-doc/index.html
 After=network.target
 
 [Service]
+# Configuration
+Environment="CATALINA_HOME=/usr/share/tomcat9"
+Environment="CATALINA_BASE=/var/lib/tomcat9"
+Environment="CATALINA_TMPDIR=/tmp"
+Environment="JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom"
+EnvironmentFile=-/etc/default/tomcat9
+
+# Lifecycle
 Type=forking
+ExecStartPre=+/usr/libexec/tomcat9/tomcat-update-policy.sh
+ExecStart=/bin/sh /usr/libexec/tomcat9/tomcat-start.sh
+ExecStop=/bin/sh /usr/share/tomcat9/bin/shutdown.sh
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
 
-Environment=JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64/jre
-Environment=CATALINA_PID=/opt/tomcat/temp/tomcat.pid
-Environment=CATALINA_HOME=/opt/tomcat
-Environment=CATALINA_BASE=/opt/tomcat
-Environment='CATALINA_OPTS=-Xms1024M -Xmx2048M -XX:MaxPermSize=128m'
-Environment='JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom'
+# Logging
+SyslogIdentifier=tomcat9
 
-ExecStart=/opt/tomcat/bin/startup.sh
-ExecStop=/opt/tomcat/bin/shutdown.sh
-
+# Security
 User=tomcat
 Group=tomcat
 UMask=0007
-RestartSec=10
-Restart=always
+PrivateTmp=yes
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+LogsDirectory=tomcat9
+LogsDirectoryMode=750
+CacheDirectory=tomcat9
+CacheDirectoryMode=750
+ProtectSystem=strict
+ReadWritePaths=/etc/tomcat9/Catalina/
+ReadWritePaths=/var/lib/tomcat9/webapps/
+ReadWritePaths=/opt/vivo/
 
 [Install]
 WantedBy=multi-user.target

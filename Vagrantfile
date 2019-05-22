@@ -10,6 +10,7 @@ Vagrant.configure("2") do |config|
   # The most common configuration options are documented and commented below.
   # For a complete reference, please see the online documentation at
   # https://docs.vagrantup.com.
+  config.vm.define("vagrant-vivo")
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
@@ -61,6 +62,9 @@ Vagrant.configure("2") do |config|
     vb.cpus = 2
     # Customize the amount of memory on the VM:
     vb.memory = "4096"
+
+    # Name the vagrant vbox instance
+    vb.name = "vagrant-vivo"
   end
 
   config.vm.provider "vmware_fusion" do |v,override|
@@ -74,5 +78,4 @@ Vagrant.configure("2") do |config|
 
   # Install VIVO
   config.vm.provision "vivo", type: "shell", path: "provision/install.sh", privileged: true
-
 end
