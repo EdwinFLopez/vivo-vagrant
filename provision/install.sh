@@ -4,7 +4,7 @@
 # Set global variables
 #
 CATALINA_BASE="/var/lib/tomcat9"
-CATALINA_WEBAPPS="$CATALINA_BASE/webapps/"
+CATALINA_WEBAPPS="$CATALINA_BASE/webapps"
 TOMCAT_CONFIG="/etc/tomcat9"
 CATALINA_CONFIG="$TOMCAT_CONFIG/Catalina/localhost"
 DUMMY_TOMCAT_HOME="/opt/tomcat"
@@ -116,20 +116,20 @@ installVIVO() {
   echo 'tomcat           hard    nproc           1500' >> /etc/security/limits.conf
 
   # Make data directory
-  mkdir -p $VIVO_HOME
+  mkdir -p $VIVO_HOME || true
 
   # Make config directory
-  mkdir -p $VIVO_HOME/config
+  mkdir -p $VIVO_HOME/config || true
 
   # Make log directory
-  mkdir -p $VIVO_HOME/logs
+  mkdir -p $VIVO_HOME/logs || true
 
   # Make src directory
-  mkdir -p $SOURCE_HOME
+  mkdir -p $SOURCE_HOME || true
 
   # Make dummy tomcat folder to comply with build script and link it 
   # to current webapps folder so deployment can happen
-  mkdir $DUMMY_TOMCAT_HOME
+  mkdir $DUMMY_TOMCAT_HOME || true
   ln -sF $DUMMY_TOMCAT_HOME/webapps $CATALINA_WEBAPPS
 
   # Vivo

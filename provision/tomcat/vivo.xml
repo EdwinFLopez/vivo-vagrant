@@ -1,4 +1,4 @@
-<Context path="/vivo" docBase="/opt/tomcat/webapps/vivo">
+<Context path="/vivo" docBase="/var/lib/tomcat9/webapps/vivo">
     <Environment type="java.lang.String" name="vitro/home" value="/opt/vivo" override="true"/>
   <Resources allowLinking="true"/>
 </Context>
