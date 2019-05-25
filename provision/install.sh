@@ -3,10 +3,13 @@
 #
 # Set global variables
 #
+
+echo "Catalina Base: $CATALINA_BASE"
+
 CATALINA_BASE="/var/lib/tomcat9"
-CATALINA_WEBAPPS="$CATALINA_BASE/webapps"
+TOMCAT_WEBAPPS="$CATALINA_BASE/webapps"
 TOMCAT_CONFIG="/etc/tomcat9"
-CATALINA_CONFIG="$TOMCAT_CONFIG/Catalina/localhost"
+TOMCAT_INSTANCE="$TOMCAT_CONFIG/Catalina/localhost"
 DUMMY_TOMCAT_HOME="/opt/tomcat"
 VIVO_HOME="/opt/vivo"
 VIVO_REPO_URL="https://github.com/vivo-project"
@@ -62,7 +65,7 @@ updateTomcatConfiguration() {
   usermod -a -G tomcat vagrant || true
 
   # Change permissions in vivo folders
-  dirs=( $VIVO_HOME $DUMMY_TOMCAT_HOME $CATALINA_WEBAPPS/vivo $CATALINA_WEBAPPS/vivosolr )
+  dirs=( $VIVO_HOME $DUMMY_TOMCAT_HOME $TOMCAT_WEBAPPS/vivo $TOMCAT_WEBAPPS/vivosolr )
   for dir in "${dirs[@]}"
   do
     chown -R vagrant:tomcat $dir
@@ -70,21 +73,21 @@ updateTomcatConfiguration() {
   done
 
   # Add redirect to /vivo in tomcat root
-  rm -f $CATALINA_WEBAPPS/ROOT/index.html || true
-  cp $PROVISION_HOME/vivo/index.jsp $CATALINA_WEBAPPS/ROOT/index.jsp
+  rm -f $TOMCAT_WEBAPPS/ROOT/index.html || true
+  cp $PROVISION_HOME/vivo/index.jsp $TOMCAT_WEBAPPS/ROOT/index.jsp
 
   # Add vivo users to tomcat-users.xml
   rm -f $TOMCAT_CONFIG/tomcat-users.xml || true
   cp $PROVISION_HOME/tomcat/tomcat-users.xml $TOMCAT_CONFIG/tomcat-users.xml
 
   # Add vivo context to tomcat
-  cp $PROVISION_HOME/tomcat/vivo.xml $CATALINA_CONFIG/vivo.xml
-  cp $PROVISION_HOME/tomcat/vivosolr.xml $CATALINA_CONFIG/vivosolr.xml
+  cp $PROVISION_HOME/tomcat/vivo.xml $TOMCAT_INSTANCE/vivo.xml
+  cp $PROVISION_HOME/tomcat/vivosolr.xml $TOMCAT_INSTANCE/vivosolr.xml
 
   # Assign contexts to tomcat group
   chgrp tomcat $TOMCAT_CONFIG/tomcat-users.xml
-  chgrp tomcat $CATALINA_CONFIG/vivo.xml
-  chgrp tomcat $CATALINA_CONFIG/vivosolr.xml
+  chgrp tomcat $TOMCAT_INSTANCE/vivo.xml
+  chgrp tomcat $TOMCAT_INSTANCE/vivosolr.xml
 
   # Update tomcat service configuration 
   rm -r $ORIGIN_T9_SERVICE || true
@@ -130,7 +133,7 @@ installVIVO() {
   # Make dummy tomcat folder to comply with build script and link it 
   # to current webapps folder so deployment can happen
   mkdir $DUMMY_TOMCAT_HOME || true
-  ln -sF $DUMMY_TOMCAT_HOME/webapps $CATALINA_WEBAPPS
+  ln -sF $DUMMY_TOMCAT_HOME/webapps $TOMCAT_WEBAPPS
 
   # Vivo
   cd $SOURCE_HOME
