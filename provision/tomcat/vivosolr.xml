@@ -1,3 +1,0 @@
-<Context path="/vivosolr" docBase="/var/lib/tomcat9/webapps/vivosolr">
-  <Resources allowLinking="true"/>
-</Context>

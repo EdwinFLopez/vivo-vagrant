@@ -3,56 +3,61 @@
 #
 # Setup the base box
 #
-
-# Install MySQL
-installMySQL () {
-    DEBIAN_FRONTEND=noninteractive apt-get -y install mysql-server
-    mysqladmin -u root password vivo
-}
-
-# Setup Ubuntu Firewall
-setupFirewall () {
-  ufw allow 22
-  ufw allow 8080
-  ufw allow 8081
-  ufw allow 8000
-  ufw enable
-}
-
-# Exit on first error
+set -o verbose
+#Exit on first error
 set -e
 
-# Print shell commands
-set -o verbose
-
-# Set time zone
-timedatectl set-timezone "Europe/London"
-
-# Update Ubuntu packages. Comment out during development
-apt-get upgrade -y
-
+#Update Ubuntu packages. Comment out during development
 apt-get update -y
 
-# Install Java OpenJDK8, Maven, Tomcat 9
-apt-get install -y openjdk-8-jdk-headless 
+#Set time zone
+area="America"
+zone="New_York"
+echo "$area/$zone" > /tmp/timezone
+cp -f /tmp/timezone /etc/timezone
+cp -f /usr/share/zoneinfo/$area/$zone /etc/localtime
 
-apt-get install -y ca-certificates-java
+# Basics.
+apt-get install -y git vim screen wget curl raptor-utils unzip
 
-apt-get install -y policykit-1
+# Install open jdk 8
+installJava(){
+    add-apt-repository ppa:openjdk-r/ppa -y
+    apt-get update -y
+    apt-get install openjdk-8-jdk -y
+}
 
-apt-get install -y maven 
+# Maven
+installMaven () {
+	cd /usr/local
+	rm -rf /usr/bin/mvn
+	rm -rf /usr/local/apache-maven-3.3.9
+	wget http://mirrors.sonic.net/apache/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz
+	tar -xvf apache-maven-3.3.9-bin.tar.gz
+	ln -s /usr/local/apache-maven-3.3.9/bin/mvn /usr/bin/mvn
+}
 
-apt-get install -y tomcat9 tomcat9-common tomcat9-admin tomcat9-docs tomcat9-examples tomcat9-user
+# Install Tomcat 7 with JAVA_HOME export so Tomcat starts when install completes,
+installTomcat () {
+	export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+	apt-get install -y tomcat8
+	sed -i '/#JAVA_HOME.*$/a JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64' /etc/default/tomcat8
+}
 
-# Some utils
-apt-get install -y git vim screen wget curl raptor2-utils unzip mc
+# MySQL
+# echo mysql-server mysql-server/root_password password vivo | debconf-set-selections
+# echo mysql-server mysql-server/root_password_again password vivo | debconf-set-selections
+# apt-get install -y mysql-server
+# apt-get install -y mysql-client
 
-# Autoclean
-apt-get autoremove -y
 
-installMySQL
 
-setupFirewall
+installJava
+installMaven
+installTomcat
+
+#ca-certificates-java must be explicitly installed as it is needed for maven based installation
+/var/lib/dpkg/info/ca-certificates-java.postinst configure
 
 # Make Karma scripts executable
 chmod +x /home/vagrant/provision/karma.sh
@@ -60,3 +65,4 @@ chmod +x /home/vagrant/provision/karma.sh
 echo Box boostrapped.
 
 exit
+
